@@ -1,0 +1,107 @@
+---
+- hosts: UbuntuServer1
+  become: true
+  tasks:
+ 
+  - name: install updates (ubuntu)
+    apt:
+      upgrade: dist
+      update_cache: yes
+    changed_when: false
+
+###############etcd#########################
+  - name: install etcd
+    apt: 
+      name: etcd
+      state: present
+      update_cache: yes
+
+  - name: edit etcd file
+    copy:
+      content:
+        ETCD_NAME="controller"
+        ETCD_DATA_DIR="/var/lib/etcd"
+        ETCD_INITIAL_CLUSTER_STATE="new"
+        ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
+        ETCD_INITIAL_CLUSTER="controller=http://10.0.0.11:2380"
+        ETCD_INITIAL_ADVERTISE_PEER_URLS="http://10.0.0.11:2380"
+        ETCD_ADVERTISE_CLIENT_URLS="http://10.0.0.11:2379"
+        ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
+        ETCD_LISTEN_CLIENT_URLS="http://10.0.0.11:2379"
+      dest: /etc/default/etcd
+      mode: "0755"
+   
+  - name: restart etcd
+    service: 
+       name: etcd
+       state: restarted
+
+###############ntp#########################
+  - name: install network time protocol (ntp)
+    apt: 
+      name: chrony
+      state: present
+      update_cache: yes
+
+  - name: enable the chrony
+    service:
+      name: chrony.service
+      state: started
+      enabled: yes
+
+###############openstack#########################
+  - name: install openstack packages
+    apt:
+      name:
+        - nova-compute
+        - python3-openstackclient
+      state: present
+      update_cache: yes
+
+###############sqldatabase#########################
+  - name: install sql database
+    apt:
+      name: 
+        - mariadb-server
+        - python3-pymysql
+      state: present
+      update_cache: yes
+ 
+  - name: edit maria-db.conf 
+    copy:
+      content:
+        default-storage-engine = innodb
+        innodb_file_per_table = on
+        max_connections = 4096
+        collation-server = utf_general_ci
+        character-ser-server = utf8
+      dest: /etc/mysql/mariadb.conf.d/99-openstack.cnf
+      mode: "0755"
+
+  - name: restart mariadb-server
+    service: 
+       name: mysql
+       state: restarted
+       enabled: yes
+   
+###############messagequeue#########################
+  - name: install message queue
+    apt: 
+      name: rabbitmq-server
+      state: present
+      update_cache: yes
+
+###############memcached#########################
+  - name: isntall memcached
+    apt:
+      name: 
+        - memcached
+        - python3-memcache
+      state: present
+      update_cache: yes
+ 
+  - name: restart memcached
+    service: 
+       name: memcached
+       state: restarted
+       enabled: yes
